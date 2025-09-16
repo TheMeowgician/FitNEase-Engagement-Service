@@ -8,10 +8,11 @@ use App\Http\Controllers\EngagementController;
 use App\Http\Controllers\GamificationController;
 
 Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+    return $request->attributes->get('user');
+})->middleware('auth.api');
 
-Route::prefix('engagement')->group(function () {
+// Engagement Service Routes - Protected by authentication
+Route::prefix('engagement')->middleware('auth.api')->group(function () {
 
     // Achievement Management
     Route::get('/achievements/{userId}', [AchievementController::class, 'getUserAchievements']);
