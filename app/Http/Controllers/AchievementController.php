@@ -4,14 +4,28 @@ namespace App\Http\Controllers;
 
 use App\Models\Achievement;
 use App\Models\UserAchievement;
+use App\Services\CommsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 
 class AchievementController extends Controller
 {
-    public function getUserAchievements($userId): JsonResponse
+    protected $commsService;
+
+    public function __construct(CommsService $commsService)
     {
+        $this->commsService = $commsService;
+    }
+
+    public function getUserAchievements(Request $request, $userId): JsonResponse
+    {
+        // Verify user is accessing their own data or has permission
+        $authenticatedUserId = $request->attributes->get('user_id');
+        if ($authenticatedUserId != $userId) {
+            return response()->json(['message' => 'Unauthorized access to user data.'], 403);
+        }
+
         $userAchievements = UserAchievement::with('achievement')
             ->forUser($userId)
             ->get();
@@ -31,6 +45,12 @@ class AchievementController extends Controller
             'points_earned' => 'sometimes|integer|min:0'
         ]);
 
+        // Verify user is accessing their own data
+        $authenticatedUserId = $request->attributes->get('user_id');
+        if ($authenticatedUserId != $validated['user_id']) {
+            return response()->json(['message' => 'Unauthorized access to user data.'], 403);
+        }
+
         $achievement = Achievement::findOrFail($validated['achievement_id']);
 
         $userAchievement = UserAchievement::updateOrCreate(
@@ -45,6 +65,10 @@ class AchievementController extends Controller
                 'points_earned' => $validated['points_earned'] ?? $achievement->points_value
             ]
         );
+
+        // Send notification via Comms Service
+        $token = $request->bearerToken();
+        $this->commsService->sendAchievementNotification($token, $validated['user_id'], $validated['achievement_id']);
 
         return response()->json([
             'success' => true,
@@ -65,6 +89,12 @@ class AchievementController extends Controller
 
     public function updateAchievementProgress(Request $request, $userId): JsonResponse
     {
+        // Verify user is accessing their own data
+        $authenticatedUserId = $request->attributes->get('user_id');
+        if ($authenticatedUserId != $userId) {
+            return response()->json(['message' => 'Unauthorized access to user data.'], 403);
+        }
+
         $validated = $request->validate([
             'achievement_id' => 'required|integer|exists:achievements,achievement_id',
             'progress_percentage' => 'required|numeric|min:0|max:100'
@@ -85,6 +115,10 @@ class AchievementController extends Controller
         if ($userAchievement->is_completed && $userAchievement->wasRecentlyCreated) {
             $achievement = Achievement::find($validated['achievement_id']);
             $userAchievement->update(['points_earned' => $achievement->points_value]);
+
+            // Send notification for completed achievement
+            $token = $request->bearerToken();
+            $this->commsService->sendAchievementNotification($token, $userId, $validated['achievement_id']);
         }
 
         return response()->json([
