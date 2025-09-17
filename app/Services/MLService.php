@@ -20,7 +20,7 @@ class MLService
     public function getUserPatterns($userId)
     {
         try {
-            $response = Http::withHeaders([
+            $response = Http::timeout(5)->withHeaders([
                 'Accept' => 'application/json'
             ])->get($this->baseUrl . '/api/v1/user-patterns/' . $userId);
 
@@ -35,13 +35,20 @@ class MLService
                 return $behaviorPatterns;
             }
 
-            Log::error('Failed to retrieve user patterns from ML service', [
+            Log::warning('ML service unavailable or endpoint not found', [
                 'user_id' => $userId,
-                'status' => $response->status()
+                'status' => $response->status(),
+                'url' => $this->baseUrl . '/api/v1/user-patterns/' . $userId
             ]);
 
             return null;
 
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::info('ML service not available - returning empty patterns', [
+                'user_id' => $userId,
+                'service_url' => $this->baseUrl
+            ]);
+            return [];
         } catch (\Exception $e) {
             Log::error('ML service communication error: ' . $e->getMessage());
             return null;
@@ -54,7 +61,7 @@ class MLService
     public function getPersonalizedAchievements($userId)
     {
         try {
-            $response = Http::withHeaders([
+            $response = Http::timeout(5)->withHeaders([
                 'Accept' => 'application/json'
             ])->get($this->baseUrl . '/api/v1/personalized-achievements/' . $userId);
 
@@ -71,6 +78,12 @@ class MLService
 
             return null;
 
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::info('ML service not available - returning empty recommendations', [
+                'user_id' => $userId,
+                'service_url' => $this->baseUrl
+            ]);
+            return [];
         } catch (\Exception $e) {
             Log::error('ML service communication error: ' . $e->getMessage());
             return null;
@@ -88,7 +101,7 @@ class MLService
                 'engagement_data' => $engagementData
             ];
 
-            $response = Http::withHeaders([
+            $response = Http::timeout(5)->withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json'
             ])->post($this->baseUrl . '/api/v1/engagement-analysis', $payload);
@@ -102,6 +115,12 @@ class MLService
 
             return false;
 
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::info('ML service not available - skipping engagement analysis', [
+                'user_id' => $userId,
+                'service_url' => $this->baseUrl
+            ]);
+            return true;
         } catch (\Exception $e) {
             Log::error('ML service communication error: ' . $e->getMessage());
             return false;
