@@ -6,6 +6,8 @@ use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\RewardController;
 use App\Http\Controllers\EngagementController;
 use App\Http\Controllers\GamificationController;
+use App\Http\Controllers\ServiceTestController;
+use App\Http\Controllers\ServiceCommunicationTestController;
 
 // Health check endpoint for Docker and service monitoring
 Route::get('/health', function () {
@@ -45,4 +47,17 @@ Route::prefix('engagement')->middleware('auth.api')->group(function () {
     Route::post('/award-points', [GamificationController::class, 'awardPoints']);
     Route::get('/achievement-progress/{userId}', [GamificationController::class, 'getAchievementProgress']);
 
+});
+
+// Service testing routes - for validating inter-service communication
+Route::middleware('auth.api')->prefix('service-tests')->group(function () {
+    Route::get('/auth', [ServiceTestController::class, 'testAuthService']);
+    Route::get('/comms', [ServiceTestController::class, 'testCommsService']);
+    Route::get('/tracking', [ServiceTestController::class, 'testTrackingService']);
+    Route::get('/ml', [ServiceTestController::class, 'testMLService']);
+    Route::get('/all', [ServiceTestController::class, 'testAllServices']);
+
+    Route::get('/connectivity', [ServiceCommunicationTestController::class, 'testServiceConnectivity']);
+    Route::get('/token-validation', [ServiceCommunicationTestController::class, 'testEngagementTokenValidation']);
+    Route::get('/integration', [ServiceCommunicationTestController::class, 'testServiceIntegration']);
 });
