@@ -7,6 +7,16 @@ use App\Http\Controllers\RewardController;
 use App\Http\Controllers\EngagementController;
 use App\Http\Controllers\GamificationController;
 
+// Health check endpoint for Docker and service monitoring
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'healthy',
+        'service' => 'fitnease-engagement',
+        'timestamp' => now()->toISOString(),
+        'database' => 'connected'
+    ]);
+});
+
 Route::get('/user', function (Request $request) {
     return $request->attributes->get('user');
 })->middleware('auth.api');
