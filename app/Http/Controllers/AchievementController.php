@@ -350,9 +350,10 @@ class AchievementController extends Controller
     private function autoUnlockBeginnerAchievement($userId): void
     {
         try {
-            // Find the beginner achievement
-            $beginnerAchievement = Achievement::where('achievement_type', 'level')
+            // Find the beginner achievement (uses 'special' type with level_progression criteria)
+            $beginnerAchievement = Achievement::where('achievement_type', 'special')
                 ->whereRaw("JSON_EXTRACT(criteria_json, '$.level') = ?", ['beginner'])
+                ->whereRaw("JSON_EXTRACT(criteria_json, '$.type') = ?", ['level_progression'])
                 ->first();
 
             if (!$beginnerAchievement) {
@@ -427,9 +428,10 @@ class AchievementController extends Controller
             return response()->json(['message' => 'Unauthorized access to user data.'], 403);
         }
 
-        // Find the level achievement
-        $achievement = Achievement::where('achievement_type', 'level')
+        // Find the level achievement (uses 'special' type with level_progression criteria)
+        $achievement = Achievement::where('achievement_type', 'special')
             ->whereRaw("JSON_EXTRACT(criteria_json, '$.level') = ?", [$validated['level']])
+            ->whereRaw("JSON_EXTRACT(criteria_json, '$.type') = ?", ['level_progression'])
             ->first();
 
         if (!$achievement) {

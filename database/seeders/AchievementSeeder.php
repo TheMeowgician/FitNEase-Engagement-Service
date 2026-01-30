@@ -321,8 +321,8 @@ class AchievementSeeder extends Seeder
             [
                 'achievement_name' => 'Welcome Newcomer',
                 'description' => 'Start your fitness journey as a beginner',
-                'achievement_type' => 'level',
-                'criteria_json' => ['level' => 'beginner'],
+                'achievement_type' => 'special',
+                'criteria_json' => ['level' => 'beginner', 'type' => 'level_progression'],
                 'points_value' => 10,
                 'badge_icon' => 'person-add',
                 'badge_color' => '#10B981',
@@ -332,8 +332,8 @@ class AchievementSeeder extends Seeder
             [
                 'achievement_name' => 'Rising Star',
                 'description' => 'Reach intermediate fitness level',
-                'achievement_type' => 'level',
-                'criteria_json' => ['level' => 'intermediate'],
+                'achievement_type' => 'special',
+                'criteria_json' => ['level' => 'intermediate', 'type' => 'level_progression'],
                 'points_value' => 100,
                 'badge_icon' => 'trending-up',
                 'badge_color' => '#3B82F6',
@@ -343,8 +343,8 @@ class AchievementSeeder extends Seeder
             [
                 'achievement_name' => 'Elite Athlete',
                 'description' => 'Reach advanced fitness level',
-                'achievement_type' => 'level',
-                'criteria_json' => ['level' => 'advanced'],
+                'achievement_type' => 'special',
+                'criteria_json' => ['level' => 'advanced', 'type' => 'level_progression'],
                 'points_value' => 200,
                 'badge_icon' => 'rocket',
                 'badge_color' => '#8B5CF6',
