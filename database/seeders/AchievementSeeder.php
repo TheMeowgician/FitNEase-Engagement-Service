@@ -316,6 +316,41 @@ class AchievementSeeder extends Seeder
                 'rarity_level' => 'legendary',
                 'is_active' => true,
             ],
+
+            // ===== LEVEL PROGRESSION ACHIEVEMENTS =====
+            [
+                'achievement_name' => 'Welcome Newcomer',
+                'description' => 'Start your fitness journey as a beginner',
+                'achievement_type' => 'level',
+                'criteria_json' => ['level' => 'beginner'],
+                'points_value' => 10,
+                'badge_icon' => 'person-add',
+                'badge_color' => '#10B981',
+                'rarity_level' => 'common',
+                'is_active' => true,
+            ],
+            [
+                'achievement_name' => 'Rising Star',
+                'description' => 'Reach intermediate fitness level',
+                'achievement_type' => 'level',
+                'criteria_json' => ['level' => 'intermediate'],
+                'points_value' => 100,
+                'badge_icon' => 'trending-up',
+                'badge_color' => '#3B82F6',
+                'rarity_level' => 'rare',
+                'is_active' => true,
+            ],
+            [
+                'achievement_name' => 'Elite Athlete',
+                'description' => 'Reach advanced fitness level',
+                'achievement_type' => 'level',
+                'criteria_json' => ['level' => 'advanced'],
+                'points_value' => 200,
+                'badge_icon' => 'rocket',
+                'badge_color' => '#8B5CF6',
+                'rarity_level' => 'epic',
+                'is_active' => true,
+            ],
         ];
 
         foreach ($achievements as $achievement) {

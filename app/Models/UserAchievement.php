@@ -16,6 +16,7 @@ class UserAchievement extends Model
         'is_completed',
         'earned_at',
         'notification_sent',
+        'seen_at',
         'points_earned'
     ];
 
@@ -24,7 +25,8 @@ class UserAchievement extends Model
         'is_completed' => 'boolean',
         'notification_sent' => 'boolean',
         'points_earned' => 'integer',
-        'earned_at' => 'datetime'
+        'earned_at' => 'datetime',
+        'seen_at' => 'datetime'
     ];
 
     public function achievement(): BelongsTo
@@ -50,5 +52,13 @@ class UserAchievement extends Model
     public function scopeNotificationPending($query)
     {
         return $query->where('is_completed', true)->where('notification_sent', false);
+    }
+
+    /**
+     * Scope to get achievements that user hasn't seen yet
+     */
+    public function scopeUnseen($query)
+    {
+        return $query->where('is_completed', true)->whereNull('seen_at');
     }
 }

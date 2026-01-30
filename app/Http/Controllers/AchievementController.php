@@ -306,6 +306,188 @@ class AchievementController extends Controller
     }
 
     /**
+     * Get achievements that user hasn't seen yet (for showing modal on app open)
+     * Also auto-unlocks the beginner "Welcome Newcomer" achievement if user doesn't have it
+     */
+    public function getUnseenAchievements(Request $request, $userId): JsonResponse
+    {
+        $authenticatedUserId = $request->attributes->get('user_id');
+        if ($authenticatedUserId != $userId) {
+            return response()->json(['message' => 'Unauthorized access to user data.'], 403);
+        }
+
+        // Auto-unlock beginner achievement if user doesn't have it yet
+        $this->autoUnlockBeginnerAchievement($userId);
+
+        $unseenAchievements = UserAchievement::with('achievement')
+            ->forUser($userId)
+            ->unseen()
+            ->orderBy('earned_at', 'asc')
+            ->get()
+            ->map(function ($ua) {
+                return [
+                    'user_achievement_id' => $ua->user_achievement_id,
+                    'achievement_id' => $ua->achievement->achievement_id,
+                    'achievement_name' => $ua->achievement->achievement_name,
+                    'description' => $ua->achievement->description,
+                    'badge_icon' => $ua->achievement->badge_icon,
+                    'badge_color' => $ua->achievement->badge_color,
+                    'rarity_level' => $ua->achievement->rarity_level,
+                    'points_value' => $ua->achievement->points_value,
+                    'earned_at' => $ua->earned_at,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $unseenAchievements
+        ]);
+    }
+
+    /**
+     * Auto-unlock the beginner "Welcome Newcomer" achievement if user doesn't have it
+     */
+    private function autoUnlockBeginnerAchievement($userId): void
+    {
+        try {
+            // Find the beginner achievement
+            $beginnerAchievement = Achievement::where('achievement_type', 'level')
+                ->whereRaw("JSON_EXTRACT(criteria_json, '$.level') = ?", ['beginner'])
+                ->first();
+
+            if (!$beginnerAchievement) {
+                return;
+            }
+
+            // Check if user already has it
+            $existing = UserAchievement::where('user_id', $userId)
+                ->where('achievement_id', $beginnerAchievement->achievement_id)
+                ->exists();
+
+            if ($existing) {
+                return;
+            }
+
+            // Unlock the beginner achievement
+            UserAchievement::create([
+                'user_id' => $userId,
+                'achievement_id' => $beginnerAchievement->achievement_id,
+                'progress_percentage' => 100.00,
+                'is_completed' => true,
+                'earned_at' => now(),
+                'points_earned' => $beginnerAchievement->points_value,
+            ]);
+
+            \Log::info("Auto-unlocked beginner achievement for user {$userId}");
+        } catch (\Exception $e) {
+            \Log::warning("Failed to auto-unlock beginner achievement: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Mark achievements as seen by user (after they dismiss the modal)
+     */
+    public function markAchievementsSeen(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|integer',
+            'user_achievement_ids' => 'required|array|min:1',
+            'user_achievement_ids.*' => 'integer'
+        ]);
+
+        $authenticatedUserId = $request->attributes->get('user_id');
+        if ($authenticatedUserId != $validated['user_id']) {
+            return response()->json(['message' => 'Unauthorized access to user data.'], 403);
+        }
+
+        $updated = UserAchievement::whereIn('user_achievement_id', $validated['user_achievement_ids'])
+            ->where('user_id', $validated['user_id'])
+            ->whereNull('seen_at')
+            ->update(['seen_at' => now()]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Marked {$updated} achievements as seen"
+        ]);
+    }
+
+    /**
+     * Unlock level-based achievement (Welcome, Intermediate, Advanced)
+     * Called when user's fitness level changes
+     */
+    public function unlockLevelAchievement(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|integer',
+            'level' => 'required|string|in:beginner,intermediate,advanced'
+        ]);
+
+        $authenticatedUserId = $request->attributes->get('user_id');
+        if ($authenticatedUserId != $validated['user_id']) {
+            return response()->json(['message' => 'Unauthorized access to user data.'], 403);
+        }
+
+        // Find the level achievement
+        $achievement = Achievement::where('achievement_type', 'level')
+            ->whereRaw("JSON_EXTRACT(criteria_json, '$.level') = ?", [$validated['level']])
+            ->first();
+
+        if (!$achievement) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Level achievement not found'
+            ], 404);
+        }
+
+        // Check if already unlocked
+        $existing = UserAchievement::where('user_id', $validated['user_id'])
+            ->where('achievement_id', $achievement->achievement_id)
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Achievement already unlocked',
+                'data' => null
+            ]);
+        }
+
+        // Unlock the achievement
+        $userAchievement = UserAchievement::create([
+            'user_id' => $validated['user_id'],
+            'achievement_id' => $achievement->achievement_id,
+            'progress_percentage' => 100.00,
+            'is_completed' => true,
+            'earned_at' => now(),
+            'points_earned' => $achievement->points_value,
+        ]);
+
+        // Send notification
+        $token = $request->bearerToken();
+        try {
+            $this->commsService->sendAchievementNotification($token, $validated['user_id'], $achievement->achievement_id);
+        } catch (\Exception $e) {
+            \Log::warning("Failed to send level achievement notification: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Level achievement unlocked',
+            'data' => [
+                'user_achievement_id' => $userAchievement->user_achievement_id,
+                'achievement_id' => $achievement->achievement_id,
+                'achievement_name' => $achievement->achievement_name,
+                'description' => $achievement->description,
+                'badge_icon' => $achievement->badge_icon,
+                'badge_color' => $achievement->badge_color,
+                'rarity_level' => $achievement->rarity_level,
+                'points_value' => $achievement->points_value,
+                'earned_at' => $userAchievement->earned_at,
+            ]
+        ]);
+    }
+
+    /**
      * Check if achievement criteria is met based on user stats
      */
     private function checkAchievementCriteria(Achievement $achievement, array $userStats): bool

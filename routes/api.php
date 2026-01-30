@@ -33,6 +33,9 @@ Route::prefix('engagement')->middleware('auth.api')->group(function () {
     Route::put('/achievement-progress/{userId}', [AchievementController::class, 'updateAchievementProgress']);
     Route::post('/check-achievements', [AchievementController::class, 'checkAchievements']);
     Route::get('/recently-unlocked/{userId}', [AchievementController::class, 'getRecentlyUnlocked']);
+    Route::get('/unseen-achievements/{userId}', [AchievementController::class, 'getUnseenAchievements']);
+    Route::post('/mark-achievements-seen', [AchievementController::class, 'markAchievementsSeen']);
+    Route::post('/unlock-level-achievement', [AchievementController::class, 'unlockLevelAchievement']);
 
     // Rewards System
     Route::get('/rewards/{userId}', [RewardController::class, 'getAvailableRewards']);
