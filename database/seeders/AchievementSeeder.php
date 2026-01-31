@@ -319,7 +319,7 @@ class AchievementSeeder extends Seeder
 
             // ===== LEVEL PROGRESSION ACHIEVEMENTS =====
             [
-                'achievement_name' => 'Welcome Newcomer',
+                'achievement_name' => 'Beginner',
                 'description' => 'Start your fitness journey as a beginner',
                 'achievement_type' => 'special',
                 'criteria_json' => ['level' => 'beginner', 'type' => 'level_progression'],
@@ -330,7 +330,7 @@ class AchievementSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'achievement_name' => 'Rising Star',
+                'achievement_name' => 'Intermediate',
                 'description' => 'Reach intermediate fitness level',
                 'achievement_type' => 'special',
                 'criteria_json' => ['level' => 'intermediate', 'type' => 'level_progression'],
@@ -341,7 +341,7 @@ class AchievementSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'achievement_name' => 'Elite Athlete',
+                'achievement_name' => 'Advanced',
                 'description' => 'Reach advanced fitness level',
                 'achievement_type' => 'special',
                 'criteria_json' => ['level' => 'advanced', 'type' => 'level_progression'],
