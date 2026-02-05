@@ -354,11 +354,10 @@ class AchievementSeeder extends Seeder
         ];
 
         foreach ($achievements as $achievement) {
+            // Note: Don't json_encode criteria_json here - the model's 'array' cast handles it
             Achievement::updateOrCreate(
                 ['achievement_name' => $achievement['achievement_name']],
-                array_merge($achievement, [
-                    'criteria_json' => json_encode($achievement['criteria_json']),
-                ])
+                $achievement
             );
         }
 
