@@ -163,70 +163,87 @@ class AchievementController extends Controller
         $userId = $validated['user_id'];
         $token = $request->bearerToken();
 
-        // Get all active achievements
-        $achievements = Achievement::active()->get();
+        try {
+            // Get all active achievements
+            $achievements = Achievement::active()->get();
 
-        // Get already completed achievements for this user
-        $completedAchievementIds = UserAchievement::forUser($userId)
-            ->completed()
-            ->pluck('achievement_id')
-            ->toArray();
+            // Get already completed achievements for this user
+            $completedAchievementIds = UserAchievement::forUser($userId)
+                ->completed()
+                ->pluck('achievement_id')
+                ->toArray();
 
-        // Fetch user stats from tracking service
-        $userStats = $this->fetchUserStatsFromTracking($token, $userId);
+            // Fetch user stats from tracking service
+            $userStats = $this->fetchUserStatsFromTracking($token, $userId);
 
-        $newlyUnlocked = [];
+            $newlyUnlocked = [];
 
-        foreach ($achievements as $achievement) {
-            // Skip if already completed
-            if (in_array($achievement->achievement_id, $completedAchievementIds)) {
-                continue;
-            }
+            foreach ($achievements as $achievement) {
+                // Skip if already completed
+                if (in_array($achievement->achievement_id, $completedAchievementIds)) {
+                    continue;
+                }
 
-            // Check if criteria is met
-            $criteriaMet = $this->checkAchievementCriteria($achievement, $userStats);
-
-            if ($criteriaMet) {
-                // Unlock the achievement
-                $userAchievement = UserAchievement::create([
-                    'user_id' => $userId,
-                    'achievement_id' => $achievement->achievement_id,
-                    'progress_percentage' => 100.00,
-                    'is_completed' => true,
-                    'earned_at' => now(),
-                    'points_earned' => $achievement->points_value,
-                ]);
-
-                // Add to newly unlocked list with full achievement details
-                $newlyUnlocked[] = [
-                    'user_achievement_id' => $userAchievement->user_achievement_id,
-                    'achievement_id' => $achievement->achievement_id,
-                    'achievement_name' => $achievement->achievement_name,
-                    'description' => $achievement->description,
-                    'badge_icon' => $achievement->badge_icon,
-                    'badge_color' => $achievement->badge_color,
-                    'rarity_level' => $achievement->rarity_level,
-                    'points_value' => $achievement->points_value,
-                    'points_earned' => $userAchievement->points_earned,
-                    'earned_at' => $userAchievement->earned_at,
-                ];
-
-                // Send notification for the achievement
+                // Check if criteria is met
                 try {
-                    $this->commsService->sendAchievementNotification($token, $userId, $achievement->achievement_id);
+                    $criteriaMet = $this->checkAchievementCriteria($achievement, $userStats);
                 } catch (\Exception $e) {
-                    \Log::warning("Failed to send achievement notification: " . $e->getMessage());
+                    \Log::warning("Failed to check criteria for achievement {$achievement->achievement_id}: " . $e->getMessage());
+                    continue;
+                }
+
+                if ($criteriaMet) {
+                    // Unlock the achievement
+                    $userAchievement = UserAchievement::create([
+                        'user_id' => $userId,
+                        'achievement_id' => $achievement->achievement_id,
+                        'progress_percentage' => 100.00,
+                        'is_completed' => true,
+                        'earned_at' => now(),
+                        'points_earned' => $achievement->points_value,
+                    ]);
+
+                    // Add to newly unlocked list with full achievement details
+                    $newlyUnlocked[] = [
+                        'user_achievement_id' => $userAchievement->user_achievement_id,
+                        'achievement_id' => $achievement->achievement_id,
+                        'achievement_name' => $achievement->achievement_name,
+                        'description' => $achievement->description,
+                        'badge_icon' => $achievement->badge_icon,
+                        'badge_color' => $achievement->badge_color,
+                        'rarity_level' => $achievement->rarity_level,
+                        'points_value' => $achievement->points_value,
+                        'points_earned' => $userAchievement->points_earned,
+                        'earned_at' => $userAchievement->earned_at,
+                    ];
+
+                    // Send notification for the achievement
+                    try {
+                        $this->commsService->sendAchievementNotification($token, $userId, $achievement->achievement_id);
+                    } catch (\Exception $e) {
+                        \Log::warning("Failed to send achievement notification: " . $e->getMessage());
+                    }
                 }
             }
-        }
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'newly_unlocked' => $newlyUnlocked,
-                'total_unlocked' => count($newlyUnlocked),
-            ]
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'newly_unlocked' => $newlyUnlocked,
+                    'total_unlocked' => count($newlyUnlocked),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("checkAchievements failed for user {$userId}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Achievement check failed',
+                'data' => [
+                    'newly_unlocked' => [],
+                    'total_unlocked' => 0,
+                ]
+            ], 200); // Return 200 with empty results instead of 500
+        }
     }
 
     /**
