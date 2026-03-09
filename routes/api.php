@@ -43,6 +43,7 @@ Route::prefix('engagement')->middleware('auth.api')->group(function () {
     Route::get('/user-rewards/{userId}', [RewardController::class, 'getUserRewards']);
 
     // Engagement Analytics
+    Route::post('/workout-engagement', [EngagementController::class, 'recordWorkoutEngagement']);
     Route::post('/engagement-metrics', [EngagementController::class, 'trackEngagementMetrics']);
     Route::get('/user-stats/{userId}', [EngagementController::class, 'getUserStats']);
     Route::get('/leaderboard', [EngagementController::class, 'getLeaderboard']);

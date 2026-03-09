@@ -10,6 +10,45 @@ use Carbon\Carbon;
 
 class EngagementController extends Controller
 {
+    /**
+     * Handle workout completion events from the tracking service.
+     * Increments session_count for today's engagement metric.
+     */
+    public function recordWorkoutEngagement(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|integer',
+            'session_data' => 'sometimes|array',
+        ]);
+
+        $metricDate = Carbon::today()->toDateString();
+        $durationMinutes = $validated['session_data']['actual_duration_minutes'] ?? 0;
+
+        $metric = EngagementMetric::updateOrCreate(
+            [
+                'user_id' => $validated['user_id'],
+                'metric_date' => $metricDate,
+            ],
+            []
+        );
+
+        // Increment session count and duration
+        $metric->increment('session_count');
+        if ($durationMinutes > 0) {
+            $metric->increment('total_session_duration_minutes', (int) $durationMinutes);
+        }
+
+        // Recalculate engagement score
+        $metric->engagement_score = $this->calculateEngagementScore($metric->toArray());
+        $metric->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Workout engagement recorded',
+            'data' => $metric,
+        ]);
+    }
+
     public function trackEngagementMetrics(Request $request): JsonResponse
     {
         $validated = $request->validate([
